@@ -386,8 +386,7 @@ async function startRound(interaction, gameType) {
     .setTitle(`🔍 ¡Adivina el ${typeText}!`)
     .setDescription(
       `Se mostrará una imagen difuminada. ¡Adivina quién o qué es!\n\n` +
-      `**Tiempo:** ${SETTINGS.GUESSIMAGE_ROUND_TIME} segundos\n` +
-      `**Imagen clara en:** ${SETTINGS.GUESSIMAGE_BLUR_TIME} segundos\n\n` +
+      `**Tiempo:** ${SETTINGS.GUESSIMAGE_ROUND_TIME} segundos\n\n` +
       `Escribe tu respuesta en el chat.`
     )
     .setImage('attachment://blurred.png')
@@ -418,30 +417,44 @@ async function startRound(interaction, gameType) {
     target: target,
     channelId: interaction.channelId,
     startTime: Date.now(),
-    revealTimeout: null,
+    revealTimeouts: [],
     collector: null, // Guardar referencia al collector de mensajes
     buttonCollector: null // Guardar referencia al collector de botones
   });
 
   const game = gameManager.getGame(interaction.guildId);
 
-  // Programar revelación de imagen clara
-  game.revealTimeout = setTimeout(async () => {
-    const game = gameManager.getGame(interaction.guildId);
-    if (!game || game.type !== 'guessimage') return;
+  // Programar revelaciones graduales del blur: 66%, 33% (sin mostrar la imagen clara final)
+  const blurLevels = [
+    { blur: Math.round(SETTINGS.GUESSIMAGE_BLUR_AMOUNT * 0.66), time: SETTINGS.GUESSIMAGE_REVEAL_INTERVALS[0] },
+    { blur: Math.round(SETTINGS.GUESSIMAGE_BLUR_AMOUNT * 0.33), time: SETTINGS.GUESSIMAGE_REVEAL_INTERVALS[1] }
+  ];
 
-    const clearAttachment = new AttachmentBuilder(target.imageUrl);
-    const revealEmbed = new EmbedBuilder()
-      .setColor(COLORS.INFO)
-      .setTitle('🔓 Imagen Revelada')
-      .setDescription(`¡Ahora puedes ver la imagen completa! Tienes ${SETTINGS.GUESSIMAGE_BLUR_TIME} segundos más.`)
-      .setImage(target.imageUrl)
-      .setTimestamp();
+  blurLevels.forEach((level, index) => {
+    const timeout = setTimeout(async () => {
+      const game = gameManager.getGame(interaction.guildId);
+      if (!game || game.type !== 'guessimage') return;
 
-    await interaction.followUp({
-      embeds: [revealEmbed]
-    });
-  }, SETTINGS.GUESSIMAGE_BLUR_TIME * 1000);
+      // Aplicar nuevo nivel de blur
+      const revealedImage = await applyBlur(target.imageUrl, level.blur);
+      if (!revealedImage) return;
+      
+      const attachment = new AttachmentBuilder(revealedImage, { name: `blur-reveal-${index}.png` });
+
+      const revealEmbed = new EmbedBuilder()
+        .setColor(COLORS.INFO)
+        .setTitle('🔓 Revelación Gradual')
+        .setImage(`attachment://blur-reveal-${index}.png`)
+        .setTimestamp();
+
+      await interaction.followUp({
+        embeds: [revealEmbed],
+        files: [attachment]
+      });
+    }, level.time * 1000);
+    
+    game.revealTimeouts.push(timeout);
+  });
 
   // Esperar respuestas
   const filter = m => !m.author.bot;
@@ -462,10 +475,10 @@ async function startRound(interaction, gameType) {
       winner = msg.author;
       collector.stop('guessed');
       
-      // Cancelar timeout de revelación de imagen
+      // Cancelar timeouts de revelación de imagen
       const game = gameManager.getGame(interaction.guildId);
-      if (game && game.revealTimeout) {
-        clearTimeout(game.revealTimeout);
+      if (game && game.revealTimeouts) {
+        game.revealTimeouts.forEach(timeout => clearTimeout(timeout));
       }
       
       await handleCorrectGuess(interaction, target, winner, gameType);
@@ -473,10 +486,10 @@ async function startRound(interaction, gameType) {
   });
 
   collector.on('end', async (collected, reason) => {
-    // Limpiar timeout de revelación
+    // Limpiar timeouts de revelación
     const game = gameManager.getGame(interaction.guildId);
-    if (game && game.revealTimeout) {
-      clearTimeout(game.revealTimeout);
+    if (game && game.revealTimeouts) {
+      game.revealTimeouts.forEach(timeout => clearTimeout(timeout));
     }
     
     // Si fue detenido manualmente, no hacer nada más
@@ -565,8 +578,8 @@ async function handleCorrectGuess(interaction, target, winner, originalGameType)
         if (existingGame.collector) {
           existingGame.collector.stop('continued');
         }
-        if (existingGame.revealTimeout) {
-          clearTimeout(existingGame.revealTimeout);
+        if (existingGame.revealTimeouts) {
+          existingGame.revealTimeouts.forEach(timeout => clearTimeout(timeout));
         }
       }
       
@@ -655,8 +668,8 @@ async function handleTimeUp(interaction, target, originalGameType) {
         if (existingGame.collector) {
           existingGame.collector.stop('continued');
         }
-        if (existingGame.revealTimeout) {
-          clearTimeout(existingGame.revealTimeout);
+        if (existingGame.revealTimeouts) {
+          existingGame.revealTimeouts.forEach(timeout => clearTimeout(timeout));
         }
       }
       
@@ -735,9 +748,9 @@ async function handleStop(interaction) {
     game.buttonCollector.stop('manual_stop');
   }
   
-  // Cancelar timeout de revelación si existe
-  if (game.revealTimeout) {
-    clearTimeout(game.revealTimeout);
+  // Cancelar timeouts de revelación si existen
+  if (game.revealTimeouts) {
+    game.revealTimeouts.forEach(timeout => clearTimeout(timeout));
   }
   
   // Terminar juego

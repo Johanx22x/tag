@@ -237,6 +237,7 @@ async function startRound(interaction, voiceChannel, preloadedData = null, prelo
   // Manejar eventos del reproductor ANTES de reproducir
   let isPlaying = false;
   let startTime = Date.now();
+  let gameStartTime = Date.now(); // Tiempo inicial, se actualizará cuando el audio empiece
   
   player.on(AudioPlayerStatus.Playing, () => {
     if (!isPlaying) {
@@ -385,7 +386,6 @@ async function startRound(interaction, voiceChannel, preloadedData = null, prelo
   }
 
   // Registrar partida con gameStartTime que se actualizará cuando el audio empiece
-  let gameStartTime = Date.now(); // Tiempo inicial, se actualizará en Playing event
   gameManager.startGame(interaction.guildId, {
     type: 'guessopening',
     channelId: voiceChannel.id,
@@ -752,27 +752,129 @@ async function handleRules(interaction) {
 }
 
 /**
- * Obtiene un opening o ending aleatorio directamente desde AnimeThemes
+ * Obtiene un opening o ending aleatorio: primero desde AniList (popularidad) y luego busca el audio en AnimeThemes
  */
 async function fetchRandomOpening() {
   try {
-    // Obtener animes con themes de forma aleatoria
-    const randomPage = Math.floor(Math.random() * 50) + 1; // Páginas 1-50 (animes más populares)
+    // 1. Obtener un anime popular de AniList
+    const randomPage = Math.floor(Math.random() * SETTINGS.OPENING_MAX_PAGES) + 1;
     
-    const response = await fetch(
-      `https://api.animethemes.moe/anime?page[size]=50&page[number]=${randomPage}&include=animethemes.animethemeentries.videos.audio&filter[has]=resources`
-    );
+    const anilistQuery = `
+      query ($page: Int, $perPage: Int) {
+        Page(page: $page, perPage: $perPage) {
+          media(type: ANIME, sort: SCORE_DESC) {
+            id
+            title {
+              romaji
+              english
+              native
+            }
+            synonyms
+          }
+        }
+      }
+    `;
     
-    const data = await response.json();
-    const animes = data.anime || [];
-
-    if (animes.length === 0) {
+    const anilistResponse = await fetch(ANILIST_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: anilistQuery,
+        variables: { 
+          page: randomPage,
+          perPage: 50
+        }
+      })
+    });
+    
+    const anilistData = await anilistResponse.json();
+    const animeList = anilistData.data?.Page?.media || [];
+    
+    if (animeList.length === 0) {
       return null;
     }
-
-    // Seleccionar un anime aleatorio de la página
-    const anime = animes[Math.floor(Math.random() * animes.length)];
     
+    // Seleccionar un anime aleatorio de la página
+    const selectedAnime = animeList[Math.floor(Math.random() * animeList.length)];
+    
+    // 2. Buscar ese anime en AnimeThemes
+    // Intentar buscar con diferentes nombres (romaji, english, synonyms)
+    const searchNames = [
+      selectedAnime.title.romaji,
+      selectedAnime.title.english,
+      ...(selectedAnime.synonyms || [])
+    ].filter(name => name);
+    
+    let animeThemesData = null;
+    
+    for (const searchName of searchNames) {
+      try {
+        const searchResponse = await fetch(
+          `https://api.animethemes.moe/anime?filter[name]=${encodeURIComponent(searchName)}&include=animethemes.animethemeentries.videos.audio`
+        );
+        
+        const searchData = await searchResponse.json();
+        if (searchData.anime && searchData.anime.length > 0) {
+          animeThemesData = searchData.anime[0];
+          break; // Encontramos el anime
+        }
+      } catch (error) {
+        // Continuar con el siguiente nombre
+        continue;
+      }
+    }
+    
+    // Si no se encontró exactamente, intentar búsqueda más flexible con el primer nombre
+    if (!animeThemesData && searchNames.length > 0) {
+      try {
+        const fuzzySearch = await fetch(
+          `https://api.animethemes.moe/search?q=${encodeURIComponent(searchNames[0])}&limit=1&include[anime]=animethemes.animethemeentries.videos.audio`
+        );
+        
+        const fuzzyData = await fuzzySearch.json();
+        if (fuzzyData.search?.anime && fuzzyData.search.anime.length > 0) {
+          animeThemesData = fuzzyData.search.anime[0];
+        }
+      } catch (error) {
+        // Si falla, intentar con otro anime de la lista
+      }
+    }
+    
+    if (!animeThemesData) {
+      // Si no se encontró en AnimeThemes, intentar con otro anime de AniList
+      for (const altAnime of animeList) {
+        const altNames = [
+          altAnime.title.romaji,
+          altAnime.title.english
+        ].filter(name => name);
+        
+        for (const altName of altNames) {
+          try {
+            const altResponse = await fetch(
+              `https://api.animethemes.moe/anime?filter[name]=${encodeURIComponent(altName)}&include=animethemes.animethemeentries.videos.audio`
+            );
+            
+            const altData = await altResponse.json();
+            if (altData.anime && altData.anime.length > 0) {
+              animeThemesData = altData.anime[0];
+              break;
+            }
+          } catch (error) {
+            continue;
+          }
+        }
+        
+        if (animeThemesData) break;
+      }
+    }
+    
+    if (!animeThemesData) {
+      return null;
+    }
+    
+    const anime = animeThemesData;
+    
+    // 3. Procesar los temas disponibles del anime encontrado
     // Recopilar TODOS los themes disponibles (openings y endings si están habilitados)
     const availableThemes = [];
     
@@ -818,105 +920,29 @@ async function fetchRandomOpening() {
       }
     }
 
-    // Si no hay themes disponibles, intentar con otro anime
     if (availableThemes.length === 0) {
-      for (const altAnime of animes) {
-        const altThemes = [];
-        
-        for (const theme of altAnime.animethemes || []) {
-          if (theme.type === 'OP' && theme.animethemeentries?.length) {
-            for (const entry of theme.animethemeentries) {
-              if (entry.videos?.length) {
-                const video = entry.videos[0];
-                const audioUrl = video.audio?.link 
-                  ? (video.audio.link.startsWith('http') ? video.audio.link : `https://animethemes.moe${video.audio.link}`)
-                  : (video.link.startsWith('http') ? video.link : `https://animethemes.moe${video.link}`);
-                
-                altThemes.push({
-                  audioUrl,
-                  type: 'Opening',
-                  number: theme.sequence || 1,
-                  isAudioOnly: !!video.audio?.link
-                });
-              }
-            }
-          }
-          
-          if (SETTINGS.OPENING_INCLUDE_ENDINGS && theme.type === 'ED' && theme.animethemeentries?.length) {
-            for (const entry of theme.animethemeentries) {
-              if (entry.videos?.length) {
-                const video = entry.videos[0];
-                const audioUrl = video.audio?.link 
-                  ? (video.audio.link.startsWith('http') ? video.audio.link : `https://animethemes.moe${video.audio.link}`)
-                  : (video.link.startsWith('http') ? video.link : `https://animethemes.moe${video.link}`);
-                
-                altThemes.push({
-                  audioUrl,
-                  type: 'Ending',
-                  number: theme.sequence || 1,
-                  isAudioOnly: !!video.audio?.link
-                });
-              }
-            }
-          }
-        }
-        
-        if (altThemes.length > 0) {
-          const randomTheme = altThemes[Math.floor(Math.random() * altThemes.length)];
-          console.log(`🎵 Seleccionado: ${altAnime.name} - ${randomTheme.type} ${randomTheme.number} ${randomTheme.isAudioOnly ? '(Audio)' : '(WebM)'}`);
-          
-          return {
-            audioUrl: randomTheme.audioUrl,
-            animeTitle: altAnime.name,
-            themeType: randomTheme.type,
-            themeNumber: randomTheme.number
-          };
-        }
-      }
       return null;
     }
 
     // Seleccionar un theme aleatorio de todos los disponibles
     const selectedTheme = availableThemes[Math.floor(Math.random() * availableThemes.length)];
     
-    console.log(`🎵 Seleccionado: ${anime.name} - ${selectedTheme.type} ${selectedTheme.number} ${selectedTheme.isAudioOnly ? '(Audio)' : '(WebM)'} (de ${availableThemes.length} disponibles)`);
+    // Preparar títulos para validación (ya los tenemos de AniList)
+    const animeTitles = [
+      selectedAnime.title.english,
+      selectedAnime.title.romaji
+    ].filter(t => t); // Filtrar nulls
     
-    // Buscar títulos en inglés y romaji desde AniList
-    let animeTitles = [anime.name]; // Por defecto, solo el nombre de AnimeThemes
-    try {
-      const anilistQuery = `
-        query ($search: String) {
-          Media(search: $search, type: ANIME) {
-            title {
-              english
-              romaji
-            }
-          }
-        }
-      `;
-      
-      const anilistResponse = await fetch(ANILIST_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: anilistQuery,
-          variables: { search: anime.name }
-        })
-      });
-      
-      const anilistData = await anilistResponse.json();
-      if (anilistData.data?.Media?.title) {
-        const titles = anilistData.data.Media.title;
-        animeTitles = [titles.english, titles.romaji].filter(t => t); // Filtrar nulls
-        if (animeTitles.length === 0) animeTitles = [anime.name]; // Fallback
-      }
-    } catch (error) {
-      console.log('No se pudieron obtener títulos alternativos, usando solo el nombre de AnimeThemes');
+    if (animeTitles.length === 0) {
+      animeTitles.push(anime.name); // Fallback al nombre de AnimeThemes
     }
+    
+    // Usar el título romaji o english como principal para mostrar
+    const displayTitle = selectedAnime.title.english || selectedAnime.title.romaji || anime.name;
     
     return {
       audioUrl: selectedTheme.audioUrl,
-      animeTitle: anime.name, // Para mostrar
+      animeTitle: displayTitle, // Para mostrar
       animeTitles: animeTitles, // Para validación [english, romaji]
       themeType: selectedTheme.type,
       themeNumber: selectedTheme.number
