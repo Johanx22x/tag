@@ -526,7 +526,7 @@ async function handleCorrectGuess(interaction, target, winner, originalGameType)
     .addFields(
       { name: `${typeEmoji} ${typeText}`, value: nameDisplay, inline: true }
     )
-    .setThumbnail(target.imageUrl)
+    .setImage(target.imageUrl)
     .setTimestamp();
 
   if (target.additionalInfo) {
@@ -616,7 +616,7 @@ async function handleTimeUp(interaction, target, originalGameType) {
     .addFields(
       { name: `${typeEmoji} ${typeText}`, value: nameDisplay, inline: true }
     )
-    .setThumbnail(target.imageUrl)
+    .setImage(target.imageUrl)
     .setTimestamp();
 
   if (target.additionalInfo) {

@@ -3,6 +3,7 @@
  */
 
 import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } from 'discord.js';
+import stringSimilarity from 'string-similarity';
 import gameManager from '../utils/GameManager.js';
 import { createErrorEmbed, createSuccessEmbed, createInfoEmbed, formatPlayerList } from '../utils/gameHelpers.js';
 import { COLORS, EMOJIS } from '../config/constants.js';
@@ -158,7 +159,7 @@ async function handleStart(interaction) {
       `**Mínimo requerido:** ${SETTINGS.HANGMAN_MIN_PLAYERS}\n` +
       `**Tiempo:** ${SETTINGS.HANGMAN_RECRUITMENT_TIME} segundos\n\n` +
       `🎮 **Reglas:**\n` +
-      `• Por turnos, cada jugador propone una letra\n` +
+      `• Por turnos, cada jugador propone una letra o intenta adivinar el anime\n` +
       `• ${SETTINGS.HANGMAN_MAX_WRONG_GUESSES} fallos permitidos\n` +
       `• Adivinen el título del anime juntos\n` +
       `• ${SETTINGS.HANGMAN_TURN_TIME}s por turno`
@@ -223,7 +224,7 @@ async function handleStart(interaction) {
         `**Mínimo requerido:** ${SETTINGS.HANGMAN_MIN_PLAYERS}\n` +
         `**Tiempo:** ${SETTINGS.HANGMAN_RECRUITMENT_TIME} segundos\n\n` +
         `🎮 **Reglas:**\n` +
-        `• Por turnos, cada jugador propone una letra\n` +
+        `• Por turnos, cada jugador propone una letra o intenta adivinar el anime\n` +
         `• ${SETTINGS.HANGMAN_MAX_WRONG_GUESSES} fallos permitidos\n` +
         `• Adivinen el título del anime juntos\n` +
         `• ${SETTINGS.HANGMAN_TURN_TIME}s por turno\n\n` +
@@ -273,9 +274,10 @@ async function startGameplay(interaction, game) {
       `${drawHangman(game.wrongGuesses)}\n` +
       `**Letras incorrectas:** Ninguna\n` +
       `**Errores:** ${game.wrongGuesses}/${SETTINGS.HANGMAN_MAX_WRONG_GUESSES}\n\n` +
-      `**Orden de turnos:**\n${formatPlayerList(game.playersArray)}`
+      `**Orden de turnos:**\n${formatPlayerList(game.playersArray)}\n\n` +
+      `💡 **Tip:** Puedes escribir una letra o intentar adivinar el anime completo`
     )
-    .setFooter({ text: 'Escribe una letra en el chat cuando sea tu turno' })
+    .setFooter({ text: 'Escribe una letra o el nombre del anime cuando sea tu turno' })
     .setTimestamp();
 
   await interaction.followUp({ embeds: [startEmbed] });
@@ -301,7 +303,7 @@ async function nextTurn(interaction, game) {
       `${drawHangman(game.wrongGuesses)}\n` +
       `**Letras incorrectas:** ${game.wrongLetters.size > 0 ? Array.from(game.wrongLetters).join(', ') : 'Ninguna'}\n` +
       `**Errores:** ${game.wrongGuesses}/${SETTINGS.HANGMAN_MAX_WRONG_GUESSES}\n\n` +
-      `<@${currentPlayerId}>, escribe **una letra** en el chat (${SETTINGS.HANGMAN_TURN_TIME}s)`
+      `<@${currentPlayerId}>, escribe **una letra** o intenta **adivinar el anime completo** (${SETTINGS.HANGMAN_TURN_TIME}s)`
     )
     .setTimestamp();
 
@@ -319,13 +321,40 @@ async function nextTurn(interaction, game) {
     // Resetear timeouts consecutivos cuando alguien responde
     game.consecutiveTimeouts = 0;
     
-    const letter = normalizeTitle(msg.content);
+    const input = normalizeTitle(msg.content);
+    
+    // Si escribe más de una letra, se toma como intento de adivinar el anime completo
+    if (input.length > 1) {
+      // Comparar con similitud
+      const similarity = stringSimilarity.compareTwoStrings(input, game.normalizedTitle);
+      
+      if (similarity >= SETTINGS.OPENING_SIMILARITY_THRESHOLD) {
+        // ¡Adivinó el anime completo!
+        await msg.reply({ content: `🎉 ¡Correcto! Has adivinado el anime completo: **${game.originalTitle}**`, ephemeral: false });
+        return await handleVictory(interaction, game);
+      } else {
+        // Respuesta incorrecta - castigo adicional
+        game.wrongGuesses++;
+        await msg.reply({ content: `❌ Respuesta incorrecta. Se añade un error al ahorcado. (${game.wrongGuesses}/${SETTINGS.HANGMAN_MAX_WRONG_GUESSES})`, ephemeral: false });
+        
+        // Verificar derrota
+        if (game.wrongGuesses >= SETTINGS.HANGMAN_MAX_WRONG_GUESSES) {
+          return await handleDefeat(interaction, game);
+        }
+        
+        // Siguiente jugador
+        game.currentPlayerIndex = (game.currentPlayerIndex + 1) % game.playersArray.length;
+        return await nextTurn(interaction, game);
+      }
+    }
     
     // Validar que sea una sola letra
-    if (letter.length !== 1 || !/[A-Z0-9]/.test(letter)) {
-      await msg.reply({ content: '❌ Debes escribir una sola letra válida (A-Z, 0-9).', ephemeral: false });
+    if (input.length !== 1 || !/[A-Z0-9]/.test(input)) {
+      await msg.reply({ content: '❌ Debes escribir una sola letra válida (A-Z, 0-9) o intentar adivinar el anime completo.', ephemeral: false });
       return await nextTurn(interaction, game);
     }
+
+    const letter = input;
 
     // Verificar si ya fue usada
     if (game.guessedLetters.has(letter) || game.wrongLetters.has(letter)) {
@@ -458,14 +487,15 @@ async function handleRules(interaction) {
       `**Cómo jugar:**\n` +
       `1️⃣ Únete durante el reclutamiento\n` +
       `2️⃣ Espera tu turno\n` +
-      `3️⃣ Escribe **una letra** (A-Z, 0-9) en el chat\n` +
-      `4️⃣ Si aciertas, la letra se revela\n` +
+      `3️⃣ Escribe **una letra** (A-Z, 0-9) o intenta **adivinar el anime completo**\n` +
+      `4️⃣ Si aciertas una letra, se revela en el título\n` +
       `5️⃣ Si fallas, pierdes un intento\n` +
       `6️⃣ Ganan si completan el título antes de ${SETTINGS.HANGMAN_MAX_WRONG_GUESSES} fallos\n\n` +
       `**Notas:**\n` +
       `• Los títulos se normalizan (sin acentos ni símbolos especiales)\n` +
       `• Tienes ${SETTINGS.HANGMAN_TURN_TIME} segundos por turno\n` +
       `• Las letras repetidas hacen perder el turno\n` +
+      `• Adivinar el anime completo incorrectamente suma un error\n` +
       `• Es un juego cooperativo - ¡trabajen en equipo!`
     )
     .setFooter({ text: 'Usa /hangman start para jugar' })
