@@ -1,230 +1,139 @@
-# 🎌 TAG - Anime Games Bot
+# TAG - Discord Anime Games Bot
 
-TAG is a Discord bot that offers interactive and fun games related to anime.
+A Discord bot providing interactive anime-themed games with voice channel integration and multi-language support.
 
-## 🎮 Available Games
+## Games
 
 ### Impostor
-A social deduction game where players receive an anime via DM, except one player - the impostor - who must pretend to know it.
+Social deduction game where players must identify who doesn't know the assigned anime.
 
-**How to play:**
-1. Join a voice channel
-2. Use `/impostor start`
-3. Players click "Join Game"
-4. Everyone receives their role via DM
-5. Give clues and find the impostor!
-
-**Commands:**
-- `/impostor start` - Start a new game
-- `/impostor rules` - Show game rules
-- `/impostor ping` - Check bot status
+Commands: `/impostor start | rules | ping`
 
 ### Guess Opening
-Listen to anime openings and endings and guess the anime name as fast as you can!
+Identify anime by listening to opening and ending themes.
 
-**Commands:**
-- `/guessopening start` - Start a round
-- `/guessopening rules` - Show game rules
-- `/guessopening stop` - Stop current round
+Commands: `/guessopening start | rules | stop`
 
-**Features:**
-- Randomly selects from all available openings and endings
-- Bot stays in voice channel between rounds (disconnects after 90s of inactivity)
-- Configurable to include only openings or both openings and endings
+### Guess Image
+Identify anime or characters from blurred images with progressive reveal.
+
+Commands: `/guessimage start | rules | stop`
 
 ### Guess Recommendations
-Discover the anime by its recommendations from AniList community!
+Discover anime through its community recommendations.
 
-**Commands:**
-- `/guessrecommendations start` - Start a round
-- `/guessrecommendations rules` - Show game rules
-- `/guessrecommendations stop` - Stop current round
+Commands: `/guessrecommendations start | rules | stop`
 
-**Features:**
-- Shows 5 recommendations progressively (one every ~12 seconds)
-- Each recommendation includes cover image, votes, format, score, genres, and synopsis
-- 60 seconds total to guess the anime
-- Based on real community data from AniList
+### Hangman
+Classic word-guessing game with anime titles.
 
-## ✨ Features
+Commands: `/hangman start | rules | stop`
 
-- ✅ Uses AniList API for anime data (Top 500)
-- ✅ Smart caching system (updates every 24h)
-- ✅ Private DM system for game roles
-- ✅ Voice channel integration for audio games
-- ✅ Cooldown system to prevent spam
-- ✅ Clean and modular architecture
+## Features
 
-## 📋 Requirements
+- AniList API integration for anime metadata
+- AnimeThemes API for audio streaming
+- SQLite caching with 24-hour refresh cycle
+- Voice channel persistence across rounds
+- Audio preloading for instant playback
+- Dual language support (English/Romaji)
+- Fuzzy matching for answer validation
+- Configurable game parameters
 
-- **Node.js** >= 18.0.0
-- **npm** or **yarn**
-- Discord Bot Token
+## Requirements
 
-## 🚀 Quick Start
+- Node.js >= 18.0.0
+- FFmpeg (for audio processing)
+- Discord Bot Token with Message Content intent
 
-### 1. Clone the repository
+## Installation
 
 ```bash
-git clone <your-repository>
-cd ImpostorDiscordBot
-```
-
-### 2. Install dependencies
-
-```bash
+git clone <repository-url>
+cd tag
 npm install
 ```
 
-### 3. Configure environment variables
-
-Copy the example file and edit it:
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` with your credentials:
+Create `.env` file:
 
 ```env
-DISCORD_TOKEN=your_bot_token_here
-CLIENT_ID=your_client_id_here
+DISCORD_TOKEN=your_bot_token
+CLIENT_ID=your_client_id
 ```
 
-Get your credentials at: https://discord.com/developers/applications
-
-### 4. Verify setup
-
-```bash
-npm run verify
-```
-
-### 5. Start the bot
+Start the bot:
 
 ```bash
 npm start
 ```
 
-For development with auto-reload:
+Development mode with auto-reload:
 
 ```bash
 npm run dev
 ```
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 src/
-├── bot.js                    # Main entry point
-├── commands/                 # Slash commands
-│   ├── impostor.js          # Impostor game
-│   └── guessopening.js      # Guess Opening game
-├── services/                 # External services
-│   └── anilistService.js    # AniList API integration
-├── utils/                    # Shared utilities
-│   ├── GameManager.js       # Centralized game state manager
-│   ├── gameHelpers.js       # Reusable helper functions
-│   └── random.js            # Random utilities
-└── config/                   # Configuration
-    ├── constants.js         # Bot constants
-    └── settings.js          # Editable settings
+├── bot.js                      # Main entry point
+├── commands/                   # Slash command handlers
+│   ├── language.js
+│   ├── rules.js
+│   ├── start.js
+│   └── stop.js
+├── games/                      # Game implementations
+│   ├── guessimage.js
+│   ├── guessopening.js
+│   ├── guessrecommendations.js
+│   ├── hangman.js
+│   └── impostor.js
+├── services/                   # External API integrations
+│   ├── anilistService.js
+│   ├── database.js
+│   └── i18n.js
+├── utils/                      # Shared utilities
+│   ├── GameManager.js
+│   ├── gameHelpers.js
+│   └── random.js
+├── config/                     # Configuration
+│   ├── constants.js
+│   └── settings.js
+├── locales/                    # Translations
+│   ├── en.json
+│   └── es.json
+└── data/                       # SQLite cache
 ```
 
-## ⚙️ Configuration
+## Configuration
 
-Edit `src/config/settings.js` to customize:
+Key settings in `src/config/settings.js`:
 
 ```javascript
-export const SETTINGS = {
-  ANILIST_TOP_THRESHOLD: 100,      // Top N animes to use
-  DEFAULT_JOIN_TIME: 15,            // Seconds to join game
-  DEFAULT_MIN_PLAYERS: 3,           // Minimum players required
-  COMMAND_COOLDOWN: 30,             // Cooldown between commands
-  OPENING_ROUND_TIME: 30,           // Time per opening round
-  OPENING_SIMILARITY_THRESHOLD: 0.8,// Answer similarity threshold
-  OPENING_INCLUDE_ENDINGS: true,    // Include endings (not just openings)
-  OPENING_DISCONNECT_TIMEOUT: 90    // Seconds before disconnecting from voice
-};
+ANILIST_TOP_THRESHOLD: 500          // Number of top anime to cache
+OPENING_ROUND_TIME: 30               // Round duration (seconds)
+OPENING_INCLUDE_ENDINGS: true        // Include ending themes
+OPENING_DISCONNECT_TIMEOUT: 90       // Voice disconnect delay
+GUESSIMAGE_BLUR_AMOUNT: 20           // Initial blur intensity
 ```
 
-## 🤖 Bot Permissions
+## Required Permissions
 
-Required Discord permissions:
 - Send Messages
-- Send Messages in Threads
 - Embed Links
 - Use Slash Commands
-- Connect (for voice)
-- Speak (for audio playback)
+- Connect (voice)
+- Speak (voice)
 
-## 🐛 Troubleshooting
+## Architecture
 
-### "Environment variable not defined"
-**Solution:** Verify that `.env` exists and contains `DISCORD_TOKEN` and `CLIENT_ID`
+- Modular game system with independent implementations
+- Centralized state management via GameManager
+- SQLite caching layer for API responses
+- Audio preloading and streaming optimization
+- Internationalization support
 
-### "Could not send DM"
-**Solution:** Users must allow DMs from server members in their Discord settings
+## License
 
-### "Command not found"
-**Solution:** Wait 1-2 minutes for Discord to register the slash commands
-
-## 📝 Adding New Games
-
-1. Create a new file in `src/commands/` (e.g., `mygame.js`)
-
-2. Use this template:
-
-```javascript
-import { SlashCommandBuilder } from 'discord.js';
-import gameManager from '../utils/GameManager.js';
-
-export const data = new SlashCommandBuilder()
-  .setName('mygame')
-  .setDescription('Your game description')
-  .addSubcommand(subcommand =>
-    subcommand.setName('start').setDescription('Start the game')
-  );
-
-export async function execute(interaction) {
-  // Your game logic here
-}
-```
-
-3. Restart the bot - it will load automatically!
-
-## 🛠️ Available Scripts
-
-| Command | Description |
-|---------|-------------|
-| `npm start` | Start the bot in production mode |
-| `npm run dev` | Start with auto-reload (development) |
-| `npm run verify` | Verify environment setup |
-
-## 🎯 Architecture Highlights
-
-- **Independent Commands:** Each game is a self-contained slash command
-- **Centralized State:** GameManager handles active games and cooldowns
-- **Reusable Helpers:** Shared functions for common tasks
-- **Clean Separation:** Commands, services, utils, and config are clearly separated
-
-## 📄 License
-
-MIT License
-
-## 🙏 Credits
-
-- **AniList API** - Anime data
-- **AnimeThemes** - Opening audio
-- **Discord.js** - Discord library
-
-## 🤝 Contributing
-
-1. Fork the project
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
----
-
-Made with ❤️ for anime fans
+MIT
