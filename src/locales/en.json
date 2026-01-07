@@ -1,0 +1,70 @@
+{
+  "commands": {
+    "start": {
+      "name": "start",
+      "description": "Start a game",
+      "option_game": "game",
+      "option_game_description": "Select the game to start",
+      "choices": {
+        "impostor": "🎭 Impostor - Social deduction game",
+        "hangman": "📝 Hangman - Guess the anime cooperatively",
+        "guessopening": "🎵 Guess Opening - Guess by the opening",
+        "guessrecommendations": "🔍 Guess Recommendations - Guess by recommendations"
+      }
+    },
+    "rules": {
+      "name": "rules",
+      "description": "Show game rules",
+      "option_game": "game",
+      "option_game_description": "Select the game"
+    },
+    "stop": {
+      "name": "stop",
+      "description": "Stop the active game in this server"
+    },
+    "language": {
+      "name": "language",
+      "description": "Change bot language for this server",
+      "option_language": "language",
+      "option_language_description": "Select language",
+      "success": "✅ Language changed to English",
+      "no_permission": "You need Manage Server permission to change the language"
+    }
+  },
+  "errors": {
+    "game_active": "There is already an active game on this server.",
+    "no_game_active": "There is no active game on this server.",
+    "invalid_game": "❌ Invalid game.",
+    "cooldown": "You must wait {seconds}s before starting another game.",
+    "anilist_unavailable": "AniList service is unavailable. Please try again later.",
+    "no_animes_available": "No animes are currently available."
+  },
+  "impostor": {
+    "title": "🎌 New Impostor Game",
+    "recruitment_description": "{user} is starting a game!\n\nClick the button to join.\n**Time remaining:** {time} seconds\n**Players needed:** Minimum {min}",
+    "voice_channel": "Voice Channel",
+    "players_joined": "Players Joined",
+    "join_button": "🎮 Join Game",
+    "validations": {
+      "must_be_in_voice": "❌ You must be in the same voice channel to join",
+      "bots_cannot_play": "❌ Bots cannot play",
+      "already_in_game": "⚠️ You are already in the game",
+      "game_full": "The game is full",
+      "not_in_game": "You are not in the game",
+      "not_in_recruitment": "This game is no longer recruiting"
+    },
+    "joined": "✅ You have joined the game",
+    "not_enough_players": "Not enough players. At least {min} are needed.",
+    "game_started": "🎮 Game Started!",
+    "game_started_description": "The game has begun!\n\n**Players:** {players}\n**Anime:** {anime}\n\n{impostor} Check your DMs for your role!",
+    "dm_impostor": "🎭 You are the IMPOSTOR!\n\n**Anime:** {anime}\n\n**Your goal:** Convince others that you know the anime without revealing you don't know it.\n**Strategy:** Listen carefully, ask questions, and blend in with the group.",
+    "dm_player": "👥 You are a PLAYER!\n\n**Anime:** {anime}\n\n**Your goal:** Discover who the impostor is.\n**Strategy:** Ask specific questions about the anime and observe suspicious behavior.",
+    "dm_error": "⚠️ Could not send DM to {player}. Make sure you have DMs enabled.",
+    "rules_title": "📖 Impostor Game Rules",
+    "rules_description": "**Objective:**\nDiscover who doesn't know the anime among all players.\n\n**How to play:**\n1️⃣ All players receive an anime name via DM\n2️⃣ One player (the impostor) does NOT receive the name\n3️⃣ Discuss in voice chat about the anime\n4️⃣ The impostor must pretend to know it\n5️⃣ Vote who you think is the impostor\n\n**Tips:**\n• Players: Ask specific questions about plot, characters, etc.\n• Impostor: Listen carefully and give vague answers\n• Use `/stop` to end the game",
+    "stop_no_game": "There is no active Impostor game.",
+    "stop_no_permission": "Only players or administrators can stop the game.",
+    "game_stopped": "🛑 Game Stopped",
+    "game_stopped_by": "The Impostor game has been stopped by {user}."
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "commands": {
+    "start": {
+      "name": "start",
+      "description": "Inicia un juego",
+      "option_game": "juego",
+      "option_game_description": "Selecciona el juego a iniciar",
+      "choices": {
+        "impostor": "🎭 Impostor - Juego de deducción social",
+        "hangman": "📝 Hangman - Adivina el anime cooperativo",
+        "guessopening": "🎵 Guess Opening - Adivina por el opening",
+        "guessrecommendations": "🔍 Guess Recommendations - Adivina por recomendaciones"
+      }
+    },
+    "rules": {
+      "name": "rules",
+      "description": "Muestra las reglas de un juego",
+      "option_game": "juego",
+      "option_game_description": "Selecciona el juego"
+    },
+    "stop": {
+      "name": "stop",
+      "description": "Detiene el juego activo en este servidor"
+    },
+    "language": {
+      "name": "language",
+      "description": "Cambia el idioma del bot para este servidor",
+      "option_language": "idioma",
+      "option_language_description": "Selecciona el idioma",
+      "success": "✅ Idioma cambiado a Español",
+      "no_permission": "Necesitas permiso de Administrar Servidor para cambiar el idioma"
+    }
+  },
+  "errors": {
+    "game_active": "Ya hay una partida activa en este servidor.",
+    "no_game_active": "No hay ningún juego activo en este servidor.",
+    "invalid_game": "❌ Juego no válido.",
+    "cooldown": "Debes esperar {seconds}s antes de iniciar otra partida.",
+    "anilist_unavailable": "El servicio de AniList no está disponible. Intenta más tarde.",
+    "no_animes_available": "No hay animes disponibles en este momento."
+  },
+  "impostor": {
+    "title": "🎌 Nueva Partida de Impostor",
+    "recruitment_description": "¡{user} está iniciando una partida!\n\nHaz clic en el botón para unirte.\n**Tiempo restante:** {time} segundos\n**Jugadores necesarios:** Mínimo {min}",
+    "voice_channel": "Canal de Voz",
+    "players_joined": "Jugadores Unidos",
+    "join_button": "🎮 Unirse a la Partida",
+    "validations": {
+      "must_be_in_voice": "❌ Debes estar en el mismo canal de voz para unirte",
+      "bots_cannot_play": "❌ Los bots no pueden jugar",
+      "already_in_game": "⚠️ Ya estás en la partida",
+      "game_full": "La partida está llena",
+      "not_in_game": "No estás en la partida",
+      "not_in_recruitment": "Esta partida ya no está en reclutamiento"
+    },
+    "joined": "✅ Te has unido a la partida",
+    "not_enough_players": "No hay suficientes jugadores. Se necesitan al menos {min}.",
+    "game_started": "🎮 ¡Partida Iniciada!",
+    "game_started_description": "¡La partida ha comenzado!\n\n**Jugadores:** {players}\n**Anime:** {anime}\n\n{impostor} ¡Revisa tus DMs para ver tu rol!",
+    "dm_impostor": "🎭 ¡Eres el IMPOSTOR!\n\n**Anime:** {anime}\n\n**Tu objetivo:** Convencer a los demás de que conoces el anime sin revelar que no lo conoces.\n**Estrategia:** Escucha atentamente, haz preguntas y mezclate con el grupo.",
+    "dm_player": "👥 ¡Eres un JUGADOR!\n\n**Anime:** {anime}\n\n**Tu objetivo:** Descubrir quién es el impostor.\n**Estrategia:** Haz preguntas específicas sobre el anime y observa comportamientos sospechosos.",
+    "dm_error": "⚠️ No se pudo enviar DM a {player}. Asegúrate de tener los DMs activados.",
+    "rules_title": "📖 Reglas del Juego Impostor",
+    "rules_description": "**Objetivo:**\nDescubrir quién no conoce el anime entre todos los jugadores.\n\n**Cómo jugar:**\n1️⃣ Todos los jugadores reciben un nombre de anime por DM\n2️⃣ Un jugador (el impostor) NO recibe el nombre\n3️⃣ Discuten en chat de voz sobre el anime\n4️⃣ El impostor debe fingir que lo conoce\n5️⃣ Voten quién creen que es el impostor\n\n**Consejos:**\n• Jugadores: Hagan preguntas específicas sobre la trama, personajes, etc.\n• Impostor: Escucha con atención y da respuestas vagas\n• Usa `/stop` para terminar la partida",
+    "stop_no_game": "No hay ninguna partida de Impostor activa.",
+    "stop_no_permission": "Solo los jugadores o administradores pueden detener la partida.",
+    "game_stopped": "🛑 Partida Detenida",
+    "game_stopped_by": "La partida de Impostor ha sido detenida por {user}."
+  }
+}
