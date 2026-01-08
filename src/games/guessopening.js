@@ -797,6 +797,9 @@ async function fetchRandomOpening() {
     // Seleccionar un anime aleatorio de la página
     const selectedAnime = animeList[Math.floor(Math.random() * animeList.length)];
     
+    // Variable para trackear el anime que corresponde al theme encontrado
+    let matchedAnime = selectedAnime;
+    
     // 2. Buscar ese anime en AnimeThemes
     // Intentar buscar con diferentes nombres (romaji, english, synonyms)
     const searchNames = [
@@ -857,6 +860,7 @@ async function fetchRandomOpening() {
             const altData = await altResponse.json();
             if (altData.anime && altData.anime.length > 0) {
               animeThemesData = altData.anime[0];
+              matchedAnime = altAnime; // Actualizar el anime que corresponde al theme
               break;
             }
           } catch (error) {
@@ -927,10 +931,10 @@ async function fetchRandomOpening() {
     // Seleccionar un theme aleatorio de todos los disponibles
     const selectedTheme = availableThemes[Math.floor(Math.random() * availableThemes.length)];
     
-    // Preparar títulos para validación (ya los tenemos de AniList)
+    // Preparar títulos para validación usando el anime que corresponde al theme
     const animeTitles = [
-      selectedAnime.title.english,
-      selectedAnime.title.romaji
+      matchedAnime.title.english,
+      matchedAnime.title.romaji
     ].filter(t => t); // Filtrar nulls
     
     if (animeTitles.length === 0) {
@@ -938,7 +942,7 @@ async function fetchRandomOpening() {
     }
     
     // Usar el título romaji o english como principal para mostrar
-    const displayTitle = selectedAnime.title.english || selectedAnime.title.romaji || anime.name;
+    const displayTitle = matchedAnime.title.english || matchedAnime.title.romaji || anime.name;
     
     return {
       audioUrl: selectedTheme.audioUrl,
